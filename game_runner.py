@@ -49,9 +49,27 @@ def run_game(player1_config: dict, player2_config: dict):
     3. Buy(item, quantity)
     4. Sell(item, quantity)
     5. Rest()
+    6. Maintenance(plot_number)
     
     Make decisions to maximize your score. Your score is calculated as:
     Total money + Value of harvested crops
+
+    Examples:
+    - Plant(Corn, 2)
+    - Harvest(1)
+    - Buy(Fertilizer, 3)
+    - Sell(Wheat, 10)
+    - Rest()
+    - Buy(Irrigation, 1)  # To buy an upgrade
+    - Maintenance(3)
+
+    
+    Notes:
+    - To buy upgrades, use the Buy action with the upgrade name and quantity 1.
+    - The Rest action doesn't require parameters.
+    - For actions with only one parameter, still use the format ActionName(parameter).
+    - Maintenance improves soil quality of the specified plot.
+
     """
 
     for day in range(1, GAME_RULES["total_days"] + 1):
@@ -76,6 +94,7 @@ def run_game(player1_config: dict, player2_config: dict):
             
             Make a decision for {player} based on this game state. 
             Respond with a single action in the format: ActionName(parameter1, parameter2)
+            For actions with fewer than two parameters, use ActionName(parameter) or ActionName()
             """
             
             chat_result = proxy.initiate_chat(agent, message=message, max_turns=1)

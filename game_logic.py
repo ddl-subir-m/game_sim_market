@@ -192,6 +192,8 @@ def process_action(state: GameState, shared_market: SharedMarket, action: dict) 
     elif action_type == "Rest":
         state.energy = min(state.energy + GAME_RULES["energy_regen_per_day"], GAME_RULES["max_energy"])
         return "Rested and regained some energy"
+    elif action_type == "Maintenance":
+        return perform_maintenance(state, int(parameters[0]))
     else:
         return f"Unknown action type: {action_type}"
     
