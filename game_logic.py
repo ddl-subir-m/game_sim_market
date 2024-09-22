@@ -1,6 +1,6 @@
 import random
 from entities import GameState, Action, SharedMarket, Plot, Crop
-from constants import GAME_RULES, COOPERATIVE_UPGRADES
+from constants import GAME_RULES
 
 def get_season(day: int) -> str:
     num_seasons = len(GAME_RULES["seasons"])
@@ -15,10 +15,15 @@ def update_market_trends(state: GameState):
 
 def plant_crop(state: GameState, action: Action) -> str:
     crop_type = action.details["crop_type"]
-    plot_index = action.details["plot_index"]
+    plot_index = action.details["plot_index"] - 1  # Convert to 0-based index
     
-    if plot_index >= len(state.plots) or state.plots[plot_index].crop is not None:
-        return "Invalid plot for planting"
+    print(f"Attempting to plant {crop_type} on plot {plot_index + 1}. Total plots: {len(state.plots)}")
+    
+    if plot_index < 0 or plot_index >= len(state.plots):
+        return f"Invalid plot number. You have {len(state.plots)} plot(s)."
+    
+    if state.plots[plot_index].crop is not None:
+        return f"Plot {plot_index + 1} is not vacant"
     
     crop_cost = GAME_RULES["crops"][crop_type]["cost"]
     energy_cost = GAME_RULES["energy_cost"]["plant"][crop_type]
@@ -34,10 +39,10 @@ def plant_crop(state: GameState, action: Action) -> str:
     return f"Planted {crop_type} in plot {plot_index}"
 
 def harvest_crop(state: GameState, action: Action) -> str:
-    plot_index = action.details["plot_index"]
+    plot_index = action.details["plot_index"] - 1  # Convert to 0-based index
     
-    if plot_index >= len(state.plots) or state.plots[plot_index].crop is None:
-        return "No crop to harvest in this plot"
+    if plot_index < 0 or plot_index >= len(state.plots) or state.plots[plot_index].crop is None:
+        return f"No crop to harvest in plot {plot_index + 1}"
     
     crop = state.plots[plot_index].crop
     crop_info = GAME_RULES["crops"][crop.type]
@@ -60,14 +65,14 @@ def harvest_crop(state: GameState, action: Action) -> str:
     state.harvested_crops[crop.type] = state.harvested_crops.get(crop.type, 0) + total_yield
     state.plots[plot_index].crop = None
     
-    return f"Harvested {total_yield} {crop.type} from plot {plot_index}"
+    return f"Harvested {total_yield} {crop.type} from plot {plot_index + 1}"
 
 def perform_maintenance(state: GameState, action: Action) -> str:
     maintenance_type = action.details["maintenance_type"]
-    plot_index = action.details["plot_index"]
+    plot_index = action.details["plot_index"] - 1  # Convert to 0-based index
     
-    if plot_index >= len(state.plots):
-        return "Invalid plot for maintenance"
+    if plot_index < 0 or plot_index >= len(state.plots):
+        return f"Invalid plot number. You have {len(state.plots)} plot(s)."
     
     energy_cost = GAME_RULES["energy_cost"]["maintenance"][maintenance_type]
     
@@ -80,7 +85,7 @@ def perform_maintenance(state: GameState, action: Action) -> str:
     if state.plots[plot_index].crop:
         state.plots[plot_index].crop.quality *= 1.1  # Improve crop quality
     
-    return f"Performed {maintenance_type} maintenance on plot {plot_index}"
+    return f"Performed {maintenance_type} maintenance on plot {plot_index + 1}"
 
 def update_shared_market(market: SharedMarket, action: Action):
     if action.type == "sell":
@@ -100,10 +105,10 @@ def calculate_market_price(market: SharedMarket, crop_type: str, base_price: flo
 
 def buy_cooperative_upgrade(state: GameState, other_state: GameState, action: Action) -> str:
     upgrade_type = action.details["upgrade_type"]
-    if upgrade_type not in COOPERATIVE_UPGRADES:
+    if upgrade_type not in GAME_RULES["cooperative_upgrades"]:
         return "Invalid cooperative upgrade"
     
-    upgrade_cost = COOPERATIVE_UPGRADES[upgrade_type]["cost"]
+    upgrade_cost = GAME_RULES["cooperative_upgrades"][upgrade_type]["cost"]
     if state.money < upgrade_cost / 2 or other_state.money < upgrade_cost / 2:
         return "Insufficient funds for cooperative upgrade"
     
@@ -142,21 +147,36 @@ def sell_crops(state: GameState, shared_market: SharedMarket, action: Action) ->
     
     return f"Sold {amount} {crop_type} for {total_price} money in the {market_type} market"
 
-def buy_upgrade(state: GameState, action: Action) -> str:
-    upgrade_type = action.details["upgrade_type"]
+def buy_item(state: GameState, action: Action) -> str:
+    item_type = action.details["item_type"]
     
-    if upgrade_type in state.upgrades:
-        return "Upgrade already purchased"
+    if item_type == "plot":
+        current_plots = len(state.plots)
+        cost = GAME_RULES["plot_purchase"]["base_cost"] * (GAME_RULES["plot_purchase"]["cost_increase_factor"] ** current_plots)
+        
+        if state.money < cost:
+            return f"Insufficient funds to buy a new plot. Cost: {cost}, Available: {state.money}"
+        
+        state.money -= cost
+        state.plots.append(Plot())
+        return f"Purchased a new plot for {cost}. Total plots: {len(state.plots)}"
     
-    upgrade_cost = GAME_RULES["upgrades"][upgrade_type]["cost"]
+    elif item_type in GAME_RULES["upgrades"]:
+        upgrade_cost = GAME_RULES["upgrades"][item_type]["cost"]
+        
+        if item_type in state.upgrades:
+            return "Upgrade already purchased"
+        
+        if state.money < upgrade_cost:
+            return "Insufficient money for upgrade"
+        
+        state.money -= upgrade_cost
+        state.upgrades.append(item_type)
+        
+        return f"Purchased {item_type} upgrade"
     
-    if state.money < upgrade_cost:
-        return "Insufficient money for upgrade"
-    
-    state.money -= upgrade_cost
-    state.upgrades.append(upgrade_type)
-    
-    return f"Purchased {upgrade_type} upgrade"
+    else:
+        return f"Unknown item to buy: {item_type}"
 
 def process_day(state: GameState):
     state.day += 1
@@ -166,11 +186,48 @@ def process_day(state: GameState):
     
     update_market_trends(state)
     
+    # Apply upgrade effects
+    water_saving = 0
+    weather_protection = 0
+    yield_boost = 0
+    energy_saving = 0
+    
+    for upgrade in state.upgrades:
+        if upgrade in GAME_RULES["upgrades"]:
+            upgrade_info = GAME_RULES["upgrades"][upgrade]
+        elif upgrade in GAME_RULES["cooperative_upgrades"]:
+            upgrade_info = GAME_RULES["cooperative_upgrades"][upgrade]
+        else:
+            continue
+
+        if "water_saving" in upgrade_info:
+            water_saving += upgrade_info["water_saving"]
+        if "weather_protection" in upgrade_info:
+            weather_protection += upgrade_info["weather_protection"]
+        if "yield_boost" in upgrade_info:
+            yield_boost += upgrade_info["yield_boost"]
+        if "energy_saving" in upgrade_info:
+            energy_saving += upgrade_info["energy_saving"]
+    
     # Process crop growth
     for plot in state.plots:
         if plot.crop:
             growth_rate = GAME_RULES["weather_effects"][state.weather]["growth"]
+            # Apply weather protection
+            if weather_protection > 0:
+                growth_rate = max(growth_rate, 1.0)  # Ensure growth rate is at least 1.0 (neutral)
+            
+            # Apply water saving (assuming it affects growth rate)
+            growth_rate *= (1 + water_saving)
+            
             plot.crop.growth_progress += growth_rate / GAME_RULES["crops"][plot.crop.type]["base_growth_time"]
+            
+            # Apply yield boost to crop quality
+            plot.crop.quality *= (1 + yield_boost)
+    
+    # Apply energy saving
+    if energy_saving > 0:
+        state.energy = min(state.energy * (1 + energy_saving), GAME_RULES["max_energy"])
 
 def process_action(state: GameState, shared_market: SharedMarket, action: dict) -> str:
     action_type = action['name']
@@ -181,28 +238,25 @@ def process_action(state: GameState, shared_market: SharedMarket, action: dict) 
     elif action_type == "Harvest":
         return harvest_crop(state, Action(type="harvest", details={"plot_index": int(parameters[0])}))
     elif action_type == "Buy":
-        if parameters[0] in GAME_RULES["upgrades"]:
-            return buy_upgrade(state, Action(type="buy_upgrade", details={"upgrade_type": parameters[0]}))
-        elif parameters[0] in COOPERATIVE_UPGRADES:
+        if parameters[0] in GAME_RULES["cooperative_upgrades"]:
             return "Cooperative upgrades can only be purchased through a separate action"
-        else:
-            return f"Unknown item to buy: {parameters[0]}"
+        return buy_item(state, Action(type="buy", details={"item_type": parameters[0]}))
     elif action_type == "Sell":
         return sell_crops(state, shared_market, Action(type="sell", details={"crop_type": parameters[0], "amount": int(parameters[1]), "market_type": "local"}))
     elif action_type == "Rest":
         state.energy = min(state.energy + GAME_RULES["energy_regen_per_day"], GAME_RULES["max_energy"])
         return "Rested and regained some energy"
     elif action_type == "Maintenance":
-        return perform_maintenance(state, int(parameters[0]))
+        return perform_maintenance(state, Action(type="maintenance", details={"maintenance_type": parameters[0], "plot_index": int(parameters[1])}))
     else:
         return f"Unknown action type: {action_type}"
     
 def process_cooperative_upgrade(player1_state: GameState, player2_state: GameState, shared_market: SharedMarket, action: dict) -> str:
     upgrade_type = action['parameters'][0]
-    if upgrade_type not in COOPERATIVE_UPGRADES:
+    if upgrade_type not in GAME_RULES["cooperative_upgrades"]:
         return "Invalid cooperative upgrade"
     
-    upgrade_cost = COOPERATIVE_UPGRADES[upgrade_type]["cost"]
+    upgrade_cost = GAME_RULES["cooperative_upgrades"][upgrade_type]["cost"]
     if player1_state.money < upgrade_cost / 2 or player2_state.money < upgrade_cost / 2:
         return "Insufficient funds for cooperative upgrade"
     

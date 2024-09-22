@@ -1,5 +1,6 @@
 GAME_RULES = {
-    "total_days": 120,  # 4 seasons of 30 days each
+    # "total_days": 120,  # 4 seasons of 30 days each
+    "total_days": 7,  
     "starting_money": 1000,
     "max_energy": 100,
     "energy_regen_per_day": 20,
@@ -36,8 +37,8 @@ GAME_RULES = {
         "yield_factor": 0.5  # How much soil quality affects yield (0.5 means 50% impact)
     },
     "market": {
-        "local_price_factor": 0.9,
-        "global_price_factor": 1.1,
+        "local_price_factor": 1.1,
+        "global_price_factor": 1.3,
         "max_price_fluctuation": 0.2,
         "trend_duration": 7  # days
     },
@@ -46,10 +47,15 @@ GAME_RULES = {
         "Greenhouse": {"cost": 1000, "weather_protection": 0.5},
         "Fertilizer": {"cost": 300, "yield_boost": 0.2},
         "Automation": {"cost": 800, "energy_saving": 0.15}
+    },
+    "cooperative_upgrades": {
+        "Irrigation Network": {"cost": 2000, "water_saving": 0.3},
+        "Shared Greenhouse": {"cost": 3000, "weather_protection": 0.7},
+    },
+    
+    # New entry for plot purchase
+    "plot_purchase": {
+        "base_cost": 500,  # Base cost to buy a new plot
+        "cost_increase_factor": 1.5  # Each subsequent plot costs 1.5 times more
     }
-}
-
-COOPERATIVE_UPGRADES = {
-    "Irrigation Network": {"cost": 2000, "water_saving": 0.3},
-    "Shared Greenhouse": {"cost": 3000, "weather_protection": 0.7},
 }

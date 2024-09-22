@@ -3,7 +3,7 @@ import os
 import time
 from autogen import AssistantAgent, UserProxyAgent
 from dotenv import load_dotenv
-from entities import GameState, SharedMarket
+from entities import GameState, Plot, SharedMarket
 from game_logic import process_action, process_cooperative_upgrade, update_game_state
 from constants import GAME_RULES
 
@@ -35,41 +35,65 @@ def run_game(player1_config: dict, player2_config: dict):
     player1_proxy = UserProxyAgent(name="Player1Proxy",human_input_mode="NEVER")
     player2_proxy = UserProxyAgent(name="Player2Proxy",human_input_mode="NEVER")
     
-    player1_state = GameState()
-    player2_state = GameState()
+    player1_state = GameState(money=GAME_RULES["starting_money"], energy=GAME_RULES["max_energy"], plots=[Plot()])
+    player2_state = GameState(money=GAME_RULES["starting_money"], energy=GAME_RULES["max_energy"], plots=[Plot()])
 
-    # Prepare game rules and instructions
+        # Prepare game rules and instructions
     game_instructions = f"""
     You are playing a farming game. Here are the rules:
     {GAME_RULES}
     
     Available actions:
-    1. Plant(crop_type, plot_number)
-    2. Harvest(plot_number)
-    3. Buy(item, quantity)
-    4. Sell(item, quantity)
+    1. Harvest(plot_number)
+    2. Plant(crop_name, plot_number)
+    3. Buy(item_name, quantity)
+    4. Sell(crop_name, quantity)
     5. Rest()
     6. Maintenance(plot_number)
-    
+    7. BuyCooperative(upgrade_name)
+
     Make decisions to maximize your score. Your score is calculated as:
     Total money + Value of harvested crops
 
-    Examples:
-    - Plant(Corn, 2)
-    - Harvest(1)
-    - Buy(Fertilizer, 3)
-    - Sell(Wheat, 10)
-    - Rest()
-    - Buy(Irrigation, 1)  # To buy an upgrade
-    - Maintenance(3)
+    Important rules to remember:
+    - You can only harvest crops that have 100% grown. The growth time for each crop is specified in the rules above.
+    - You can only plant on plots that do not have a crop. If a plot already has a crop, you need to harvest it first before planting a new one.
+    - Each plot is numbered, starting from 1. Make sure you're using the correct plot number in your actions.
+    - Before harvesting or planting, check the state of your plots to ensure the action is valid.
 
-    
+    Examples:
+    - Plant(Corn, 2) # To Plant Corn on plot 2 (only if plot 2 is vacant)
+    - Harvest(1) # To Harvest from plot 1 (only if the crop on plot 1 is 100% grown)
+    - Sell(Wheat, 10) # To Sell 10 Wheat
+    - Rest() # Rest
+    - Buy(Irrigation)  # To buy an individual upgrade
+    - Buy(Plot)  # To buy a plot
+    - Maintenance(water,3) # To perform maintenance (water) on plot 3
+    - BuyCooperative(CommunityCenter)  # To buy a cooperative upgrade
+
     Notes:
-    - To buy upgrades, use the Buy action with the upgrade name and quantity 1.
+    - You start with one plot (numbered 1).
+    - Plot numbers in commands start from 1.
+    - For buying plots or upgrades, you can use Buy(item_name) or Buy(item_name, 1). The quantity is ignored for these purchases.
+    - To buy cooperative upgrades, use the BuyCooperative action with the upgrade name.
     - The Rest action doesn't require parameters.
     - For actions with only one parameter, still use the format ActionName(parameter).
     - Maintenance improves soil quality of the specified plot.
+    - Cooperative upgrades benefit both players and require coordination.
+    - Always check your current game state before making a decision to ensure your action is valid.
 
+    Your game state will be provided in this format:
+    Day: [current day]
+    Season: [current season]
+    Weather: [current weather]
+    Money: [your current money]
+    Energy: [your current energy]
+    Plots:
+    [list of plot statuses]
+    Harvested Crops: [your harvested crops]
+    Upgrades: [your upgrades]
+
+    Plot status will show if a plot is vacant or what crop is growing, including its growth percentage.
     """
 
     for day in range(1, GAME_RULES["total_days"] + 1):
@@ -80,9 +104,14 @@ def run_game(player1_config: dict, player2_config: dict):
         ]:
             # Prepare game state information
             game_info = {
-                "day": day,
-                "player_state": state.dict(),
-                "shared_market": shared_market.dict()
+                "Day": player1_state.day,
+                "Season": player1_state.season,
+                "Weather": player1_state.weather,
+                "Money": player1_state.money,
+                "Energy": player1_state.energy,
+                "Plots": chr(10).join(player1_state.get_plot_status(GAME_RULES)),
+                "Harvested Crops": player1_state.harvested_crops,
+                "Upgrades": player1_state.upgrades
             }
             
             # Ask agent for decision
