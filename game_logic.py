@@ -36,7 +36,7 @@ def plant_crop(state: GameState, action: Action) -> str:
     state.plots[plot_index].crop = Crop(type=crop_type, planted_at=state.day)
     state.plots[plot_index].soil_quality -= GAME_RULES["soil_quality"]["depletion_rate"]
     
-    return f"Planted {crop_type} in plot {plot_index}"
+    return f"Planted {crop_type} in plot {plot_index + 1}"
 
 def harvest_crop(state: GameState, action: Action) -> str:
     plot_index = action.details["plot_index"] - 1  # Convert to 0-based index
