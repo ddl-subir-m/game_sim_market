@@ -4,7 +4,7 @@ import time
 from autogen import AssistantAgent, UserProxyAgent
 from dotenv import load_dotenv
 from entities import GameState, Plot, SharedMarket
-from game_logic import process_action, process_cooperative_upgrade, update_game_state
+from game_logic import process_action, process_cooperative_upgrade, process_day, update_game_state
 from constants import GAME_RULES
 
 # Load environment variables
@@ -19,12 +19,13 @@ openai_agent1_config = {
 
 # Configure the LLMs
 openai_agent2_config = {
-    "model": "gpt-4o-mini",
+    # "model": "gpt-4o-mini",
+    "model": "gpt-3.5-turbo",
     "api_key": openai_api_key,
 }
 
 
-def run_game(player1_config: dict, player2_config: dict):
+async def run_game(player1_config: dict, player2_config: dict):
     shared_market = SharedMarket()
     
     # Create AutoGen agents for players
@@ -49,7 +50,7 @@ def run_game(player1_config: dict, player2_config: dict):
     3. Buy(item_name, quantity)
     4. Sell(crop_name, quantity)
     5. Rest()
-    6. Maintenance(plot_number)
+    6. Maintenance(type_of_maintenance, plot_number)
     7. BuyCooperative(upgrade_name)
 
     Make decisions to maximize your score. Your score is calculated as:
@@ -95,8 +96,10 @@ def run_game(player1_config: dict, player2_config: dict):
 
     Plot status will show if a plot is vacant or what crop is growing, including its growth percentage.
     """
+    game_log = []
 
     for day in range(1, GAME_RULES["total_days"] + 1):
+        day_log = []
         # Process actions for both players
         for player, agent, proxy, state in [
             ("Player 1", player1_agent, player1_proxy, player1_state),
@@ -104,14 +107,14 @@ def run_game(player1_config: dict, player2_config: dict):
         ]:
             # Prepare game state information
             game_info = {
-                "Day": player1_state.day,
-                "Season": player1_state.season,
-                "Weather": player1_state.weather,
-                "Money": player1_state.money,
-                "Energy": player1_state.energy,
-                "Plots": chr(10).join(player1_state.get_plot_status(GAME_RULES)),
-                "Harvested Crops": player1_state.harvested_crops,
-                "Upgrades": player1_state.upgrades
+                "Day": day,
+                "Season": state.season,
+                "Weather": state.weather,
+                "Money": state.money,
+                "Energy": state.energy,
+                "Plots": chr(10).join(state.get_plot_status(GAME_RULES)),
+                "Harvested Crops": state.harvested_crops,
+                "Upgrades": state.upgrades
             }
             
             # Ask agent for decision
@@ -126,7 +129,7 @@ def run_game(player1_config: dict, player2_config: dict):
             For actions with fewer than two parameters, use ActionName(parameter) or ActionName()
             """
             
-            chat_result = proxy.initiate_chat(agent, message=message, max_turns=1)
+            chat_result = await proxy.a_initiate_chat(agent, message=message, max_turns=1)
             action = parse_action(chat_result)
             
             # Process the action
@@ -134,13 +137,23 @@ def run_game(player1_config: dict, player2_config: dict):
                 result = process_cooperative_upgrade(player1_state, player2_state, shared_market, action)
             else:
                 result = process_action(state, shared_market, action)
-            print(f"Day {day}, {player}: {action} - {result}")
+            day_log.append(f"Day {day}, {player}: {action} - {result}")
         
         # Process end of day
-        update_game_state(player1_state)
-        update_game_state(player2_state)
+        process_day(player1_state, player2_state, shared_market)
         
-        time.sleep(0.1)  # Small delay to prevent blocking
+        game_log.extend(day_log)
+        
+        # Yield the current game state after each day
+        yield {
+            "day": day,
+            "player1": player1_state,
+            "player2": player2_state,
+            "shared_market": shared_market,
+            "game_log": game_log
+        }
+
+        await asyncio.sleep(0.1)  # Small delay to prevent blocking
 
     # Game over, determine winner
     player1_score = player1_state.money + sum(player1_state.harvested_crops.values())
@@ -153,9 +166,15 @@ def run_game(player1_config: dict, player2_config: dict):
     else:
         winner = "Tie"
     
-    print(f"Game Over! {winner} wins!")
-    print(f"Player 1 score: {player1_score}")
-    print(f"Player 2 score: {player2_score}")
+    # Yield final game result
+    yield {
+        "day": day,
+        "game_over": True,
+        "winner": winner,
+        "player1_score": player1_score,
+        "player2_score": player2_score
+    }
+
 
 def parse_action(chat_result):
     action_str = chat_result.summary.strip()

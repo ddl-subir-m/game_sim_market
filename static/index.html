@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farming Game Simulator</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div id="app">
+        <h1>Farming Game Simulator</h1>
+        <button id="startGame">Start Game</button>
+        <button id="stopGame" disabled>Stop Game</button>
+        
+        <div id="gameInfo">
+            <h2>Game Info</h2>
+            <p>Day: <span id="currentDay"></span></p>
+            <p>Season: <span id="currentSeason"></span></p>
+            <p>Weather: <span id="currentWeather"></span></p>
+        </div>
+        
+        <div id="playerFarms">
+            <div id="player1Farm" class="farm">
+                <h2>Player 1 Farm</h2>
+                <div class="plots"></div>
+            </div>
+            <div id="player2Farm" class="farm">
+                <h2>Player 2 Farm</h2>
+                <div class="plots"></div>
+            </div>
+        </div>
+        
+        <div id="playerStats">
+            <div id="player1Stats" class="stats">
+                <h2>Player 1 Stats</h2>
+                <p>Money: $<span id="player1Money"></span></p>
+                <p>Energy: <span id="player1Energy"></span></p>
+            </div>
+            <div id="player2Stats" class="stats">
+                <h2>Player 2 Stats</h2>
+                <p>Money: $<span id="player2Money"></span></p>
+                <p>Energy: <span id="player2Energy"></span></p>
+            </div>
+        </div>
+        
+        <div id="gameLog">
+            <h2>Game Log</h2>
+            <div id="logEntries"></div>
+        </div>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+#app {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+h1 {
+    grid-column: 1 / -1;
+    text-align: center;
+}
+
+button {
+    padding: 10px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#gameInfo, #playerStats, #gameLog {
+    grid-column: 1 / -1;
+}
+
+#playerFarms {
+    display: flex;
+    justify-content: space-between;
+    grid-column: 1 / -1;
+}
+
+.farm {
+    width: 48%;
+}
+
+.plots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.plot {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+}
+
+#gameLog {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+}

@@ -39,9 +39,8 @@ class GameState(BaseModel):
                 status.append(f"Plot {i}: Vacant")
             else:
                 crop = plot.crop
-                base_growth_time = game_rules["crops"][crop.type]["base_growth_time"]
-                growth_percentage = min(100, ((self.day - crop.planted_at) / base_growth_time) * 100)
-                maturity = "Mature" if crop.is_mature(self.day, base_growth_time) else "Growing"
+                growth_percentage = min(100, crop.growth_progress * 100)
+                maturity = "Mature" if crop.growth_progress >= 1.0 else "Growing"
                 status.append(f"Plot {i}: {crop.type} ({maturity}, {growth_percentage:.1f}% grown)")
         return status
 

@@ -26,10 +26,10 @@ GAME_RULES = {
         "trade": {"local": 5, "global": 10}
     },
     "weather_effects": {
-        "Sunny": {"growth": 1.2, "yield": 1.1, "energy": 1.0},
-        "Rainy": {"growth": 1.1, "yield": 1.0, "energy": 1.2},
+        "Sunny": {"growth": 1.0, "yield": 1.1, "energy": 1.0},
+        "Rainy": {"growth": 1.2, "yield": 1.0, "energy": 1.2},
         "Drought": {"growth": 0.8, "yield": 0.7, "energy": 1.5},
-        "Storm": {"growth": 0.9, "yield": 0.8, "energy": 1.3}
+        "Storm": {"growth": 0.5, "yield": 0.8, "energy": 1.3}
     },
     "soil_quality": {
         "depletion_rate": 0.1,

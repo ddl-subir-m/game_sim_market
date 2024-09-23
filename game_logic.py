@@ -178,14 +178,29 @@ def buy_item(state: GameState, action: Action) -> str:
     else:
         return f"Unknown item to buy: {item_type}"
 
-def process_day(state: GameState):
-    state.day += 1
-    state.season = get_season(state.day)
-    state.weather = get_weather(state.season)
-    state.energy = min(state.energy + GAME_RULES["energy_regen_per_day"], GAME_RULES["max_energy"])
+def process_day(player1_state: GameState, player2_state: GameState, shared_market: SharedMarket):
+    player1_state.day += 1
+    player2_state.day += 1
     
-    update_market_trends(state)
+    season = get_season(player1_state.day)
+    player1_state.season = season
+    player2_state.season = season
     
+    weather = get_weather(season)
+    player1_state.weather = weather
+    player2_state.weather = weather
+    
+    player1_state.energy = min(player1_state.energy + GAME_RULES["energy_regen_per_day"], GAME_RULES["max_energy"])
+    player2_state.energy = min(player2_state.energy + GAME_RULES["energy_regen_per_day"], GAME_RULES["max_energy"])
+    
+    update_market_trends(player1_state)
+    update_market_trends(player2_state)
+    
+    # Apply upgrade effects and process crop growth for both players
+    process_player_state(player1_state)
+    process_player_state(player2_state)
+
+def process_player_state(state: GameState):
     # Apply upgrade effects
     water_saving = 0
     weather_protection = 0
@@ -220,11 +235,15 @@ def process_day(state: GameState):
             # Apply water saving (assuming it affects growth rate)
             growth_rate *= (1 + water_saving)
             
-            plot.crop.growth_progress += growth_rate / GAME_RULES["crops"][plot.crop.type]["base_growth_time"]
+            new_growth = plot.crop.growth_progress + growth_rate / GAME_RULES["crops"][plot.crop.type]["base_growth_time"]
+            plot.crop.growth_progress = min(1.0, new_growth)  # Cap growth at 100%
             
             # Apply yield boost to crop quality
             plot.crop.quality *= (1 + yield_boost)
-    
+
+            # Apply daily soil depletion
+            plot.soil_quality = max(0, plot.soil_quality - GAME_RULES["soil_quality"]["depletion_rate"])
+
     # Apply energy saving
     if energy_saving > 0:
         state.energy = min(state.energy * (1 + energy_saving), GAME_RULES["max_energy"])
