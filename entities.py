@@ -31,7 +31,8 @@ class GameState(BaseModel):
     harvested_crops: Dict[str, int] = {}
     upgrades: List[str] = []
     market_trends: Dict[str, float] = {}
-    invalid_action_count: int = 0  
+    invalid_action_count: int = 0
+    action_log: List[str] = []  # Add this line to store the player's action log
 
     def get_plot_status(self, game_rules: dict) -> List[str]:
         status = []

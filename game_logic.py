@@ -257,6 +257,7 @@ def process_action(state: GameState, shared_market: SharedMarket, action: dict) 
     parameters = action['parameters']
     initial_energy = state.energy
 
+    result = ""
     if action_type == "Plant":
         result = plant_crop(state, Action(type="plant", details={"crop_type": parameters[0], "plot_index": int(parameters[1])}))
     elif action_type == "Harvest":
@@ -273,7 +274,10 @@ def process_action(state: GameState, shared_market: SharedMarket, action: dict) 
     elif action_type == "Maintenance":
         result = perform_maintenance(state, Action(type="maintenance", details={"maintenance_type": parameters[0], "plot_index": int(parameters[1])}))
     else:
-        return f"Unknown action type: {action_type}"
+        result = f"Unknown action type: {action_type}"
+
+    # Add the action and result to the action log
+    state.action_log.append(f"Day {state.day}: {action_type}({', '.join(map(str, parameters))}) - {result}")
 
     energy_used = initial_energy - state.energy
     return f"{result} (Energy: {initial_energy} -> {state.energy}, Used: {energy_used})"

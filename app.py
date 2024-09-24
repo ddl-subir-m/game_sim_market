@@ -65,6 +65,8 @@ async def start_game():
                     "message": f"Processed day {state.get('day', game_state['current_day'])}",
                     "player1_action": state.get("player1_action"),
                     "player2_action": state.get("player2_action"),
+                    "player1_action_log": state.get("player1_action_log", []),
+                    "player2_action_log": state.get("player2_action_log", []),
                     "game_over": state.get("game_over", False)
                 })
                 if state.get("game_over", False):

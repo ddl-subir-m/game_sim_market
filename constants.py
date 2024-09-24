@@ -5,6 +5,7 @@ GAME_RULES = {
     "starting_money": 1000,
     "max_energy": 100,
     "energy_regen_per_day": 20,
+    "action_log_display_count": 5,  # Number of recent actions to display in the game state
     "seasons": ["Spring", "Summer", "Fall", "Winter"],
     "weather_types": ["Sunny", "Rainy", "Drought", "Storm"],
     "weather_probabilities": {

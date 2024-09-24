@@ -31,6 +31,7 @@ def game_state_to_dict(state):
         "harvested_crops": state.harvested_crops,
         "energy": state.energy,
         "invalid_action_count": state.invalid_action_count,
+        "action_log": state.action_log,
     }
 
 async def run_game(player1_config: dict, player2_config: dict, stop_event: asyncio.Event):
@@ -53,10 +54,10 @@ async def run_game(player1_config: dict, player2_config: dict, stop_event: async
     {GAME_RULES}
     
     Available actions:
-    1. Harvest(plot_number)
-    2. Plant(crop_name, plot_number)
+    1. Plant(crop_name, plot_number)
+    2. Harvest(plot_number)
     3. Buy(item_name, quantity)
-    4. Sell(crop_name, quantity)
+    4. Sell(crop_name, quantity, market_type)
     5. Rest()
     6. Maintenance(type_of_maintenance, plot_number)
     7. BuyCooperative(upgrade_name)
@@ -74,11 +75,11 @@ async def run_game(player1_config: dict, player2_config: dict, stop_event: async
     Examples:
     - Plant(Corn, 2) # To Plant Corn on plot 2 (only if plot 2 is vacant)
     - Harvest(1) # To Harvest from plot 1 (only if the crop on plot 1 is 100% grown)
-    - Sell(Wheat, 10) # To Sell 10 Wheat
+    - Sell(Wheat, 10, local) # To Sell 10 Wheat in the local market
     - Rest() # Rest
     - Buy(Irrigation)  # To buy an individual upgrade
     - Buy(Plot)  # To buy a plot
-    - Maintenance(water,3) # To perform maintenance (water) on plot 3
+    - Maintenance(water, 3) # To perform maintenance (water) on plot 3
     - BuyCooperative(CommunityCenter)  # To buy a cooperative upgrade
 
     Notes:
@@ -102,8 +103,12 @@ async def run_game(player1_config: dict, player2_config: dict, stop_event: async
     [list of plot statuses]
     Harvested Crops: [your harvested crops]
     Upgrades: [your upgrades]
+    Invalid Actions: [number of invalid actions]
+    Action Log:
+    [list of your recent actions and their results]
 
     Plot status will show if a plot is vacant or what crop is growing, including its growth percentage.
+    The Action Log provides a history of your recent actions and their outcomes, which can help inform your decision-making.
     """
     game_log = []
     player1_action = ""
@@ -133,7 +138,9 @@ async def run_game(player1_config: dict, player2_config: dict, stop_event: async
                 "Energy": state.energy,
                 "Plots": chr(10).join(state.get_plot_status(GAME_RULES)),
                 "Harvested Crops": state.harvested_crops,
-                "Upgrades": state.upgrades
+                "Upgrades": state.upgrades,
+                "Invalid Actions": state.invalid_action_count,
+                "Action Log": chr(10).join(state.action_log[-GAME_RULES["action_log_display_count"]:])  # Show last action_log_display_count actions
             }
             
             # Ask agent for decision
@@ -180,7 +187,9 @@ async def run_game(player1_config: dict, player2_config: dict, stop_event: async
             "player1_action": player1_action,
             "player2_action": player2_action,
             "player1_state": game_state_to_dict(player1_state),
-            "player2_state": game_state_to_dict(player2_state)
+            "player2_state": game_state_to_dict(player2_state),
+            "player1_action_log": player1_state.action_log,
+            "player2_action_log": player2_state.action_log,
         }
 
         # Check if the game should stop after yielding the state
