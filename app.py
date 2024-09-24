@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List, Dict, Optional
 import json
 from game_runner import run_game
 from constants import GAME_RULES
@@ -12,6 +12,16 @@ app = FastAPI()
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+class ActionData(BaseModel):
+    name: str
+    parameters: Optional[List[str]] = None
+
+class GameStateUpdate(BaseModel):
+    day: int
+    message: str
+    player1_action: Optional[ActionData] = None
+    player2_action: Optional[ActionData] = None
 
 # Game state
 game_state = {
@@ -50,8 +60,13 @@ async def start_game():
             else:
                 game_state.update(state)
                 if "day" in state:
-                    game_state["current_day"] = state["day"]
-                yield json.dumps({"day": game_state["current_day"], "message": f"Processed day {game_state['current_day']}"})
+                    yield json.dumps({
+                        # "day": game_state["current_day"],
+                        "day": state.get("day", game_state["current_day"]),
+                        "message": f"Processed day {game_state['current_day']}",
+                        "player1_action": state.get("player1_action"),
+                        "player2_action": state.get("player2_action")
+                    })
 
 
     return StreamingResponse(game_stream(), media_type="application/json")

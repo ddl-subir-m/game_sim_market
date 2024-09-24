@@ -19,11 +19,18 @@ openai_agent1_config = {
 
 # Configure the LLMs
 openai_agent2_config = {
-    # "model": "gpt-4o-mini",
-    "model": "gpt-3.5-turbo",
+    "model": "gpt-4o-mini",
+    # "model": "gpt-3.5-turbo",
     "api_key": openai_api_key,
 }
 
+# Convert GameState objects to dictionaries
+def game_state_to_dict(state):
+    return {
+        "money": state.money,
+        "harvested_crops": state.harvested_crops,
+        "energy": state.energy,
+    }
 
 async def run_game(player1_config: dict, player2_config: dict):
     shared_market = SharedMarket()
@@ -39,7 +46,7 @@ async def run_game(player1_config: dict, player2_config: dict):
     player1_state = GameState(money=GAME_RULES["starting_money"], energy=GAME_RULES["max_energy"], plots=[Plot()])
     player2_state = GameState(money=GAME_RULES["starting_money"], energy=GAME_RULES["max_energy"], plots=[Plot()])
 
-        # Prepare game rules and instructions
+    # Prepare game rules and instructions
     game_instructions = f"""
     You are playing a farming game. Here are the rules:
     {GAME_RULES}
@@ -97,8 +104,14 @@ async def run_game(player1_config: dict, player2_config: dict):
     Plot status will show if a plot is vacant or what crop is growing, including its growth percentage.
     """
     game_log = []
+    player1_action = ""
+    player2_action = ""
 
     for day in range(1, GAME_RULES["total_days"] + 1):
+        # Process end of previous day and start of new day
+        if day > 1:
+            process_day(player1_state, player2_state, shared_market)
+
         day_log = []
         # Process actions for both players
         for player, agent, proxy, state in [
@@ -131,16 +144,18 @@ async def run_game(player1_config: dict, player2_config: dict):
             
             chat_result = await proxy.a_initiate_chat(agent, message=message, max_turns=1)
             action = parse_action(chat_result)
+            if player == "Player 1":
+                player1_action = {"name": action['name'], "parameters": action.get('parameters', [])}
+            else:
+                player2_action = {"name": action['name'], "parameters": action.get('parameters', [])}
+
             
             # Process the action
             if action['name'] == "BuyCooperative":
                 result = process_cooperative_upgrade(player1_state, player2_state, shared_market, action)
             else:
                 result = process_action(state, shared_market, action)
-            day_log.append(f"Day {day}, {player}: {action} - {result}")
-        
-        # Process end of day
-        process_day(player1_state, player2_state, shared_market)
+            day_log.append(f"Day {day}, {player}: {action['name']}({', '.join(map(str, action.get('parameters', [])))}): {result}")
         
         game_log.extend(day_log)
         
@@ -150,14 +165,23 @@ async def run_game(player1_config: dict, player2_config: dict):
             "player1": player1_state,
             "player2": player2_state,
             "shared_market": shared_market,
-            "game_log": game_log
+            "game_log": game_log,
+            "player1_action": player1_action,
+            "player2_action": player2_action,
+            "player1_state": game_state_to_dict(player1_state),
+            "player2_state": game_state_to_dict(player2_state)
         }
 
-        await asyncio.sleep(0.1)  # Small delay to prevent blocking
+        await asyncio.sleep(0.2)  # Small delay to prevent blocking
 
     # Game over, determine winner
-    player1_score = player1_state.money + sum(player1_state.harvested_crops.values())
-    player2_score = player2_state.money + sum(player2_state.harvested_crops.values())
+    def calculate_final_score(player_state):
+        crop_value = sum(player_state.harvested_crops.values())
+        player_state.money += crop_value  # Add crop value to player's money
+        return player_state.money
+
+    player1_score = calculate_final_score(player1_state)
+    player2_score = calculate_final_score(player2_state)
     
     if player1_score > player2_score:
         winner = "Player 1"
@@ -166,13 +190,16 @@ async def run_game(player1_config: dict, player2_config: dict):
     else:
         winner = "Tie"
     
+
     # Yield final game result
     yield {
         "day": day,
         "game_over": True,
         "winner": winner,
         "player1_score": player1_score,
-        "player2_score": player2_score
+        "player2_score": player2_score,
+        "player1_state": game_state_to_dict(player1_state),
+        "player2_state": game_state_to_dict(player2_state)
     }
 
 

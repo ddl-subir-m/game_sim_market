@@ -51,8 +51,7 @@ def harvest_crop(state: GameState, action: Action) -> str:
     if state.energy < energy_cost:
         return "Insufficient energy for harvesting"
     
-    growth_time = crop_info["base_growth_time"]
-    if (state.day - crop.planted_at) < growth_time:
+    if crop.growth_progress < 1.0:
         return "Crop not ready for harvest"
     
     state.energy -= energy_cost
@@ -251,24 +250,28 @@ def process_player_state(state: GameState):
 def process_action(state: GameState, shared_market: SharedMarket, action: dict) -> str:
     action_type = action['name']
     parameters = action['parameters']
+    initial_energy = state.energy
 
     if action_type == "Plant":
-        return plant_crop(state, Action(type="plant", details={"crop_type": parameters[0], "plot_index": int(parameters[1])}))
+        result = plant_crop(state, Action(type="plant", details={"crop_type": parameters[0], "plot_index": int(parameters[1])}))
     elif action_type == "Harvest":
-        return harvest_crop(state, Action(type="harvest", details={"plot_index": int(parameters[0])}))
+        result = harvest_crop(state, Action(type="harvest", details={"plot_index": int(parameters[0])}))
     elif action_type == "Buy":
         if parameters[0] in GAME_RULES["cooperative_upgrades"]:
             return "Cooperative upgrades can only be purchased through a separate action"
-        return buy_item(state, Action(type="buy", details={"item_type": parameters[0]}))
+        result = buy_item(state, Action(type="buy", details={"item_type": parameters[0]}))
     elif action_type == "Sell":
-        return sell_crops(state, shared_market, Action(type="sell", details={"crop_type": parameters[0], "amount": int(parameters[1]), "market_type": "local"}))
+        result = sell_crops(state, shared_market, Action(type="sell", details={"crop_type": parameters[0], "amount": int(parameters[1]), "market_type": "local"}))
     elif action_type == "Rest":
         state.energy = min(state.energy + GAME_RULES["energy_regen_per_day"], GAME_RULES["max_energy"])
-        return "Rested and regained some energy"
+        result = "Rested and regained some energy"
     elif action_type == "Maintenance":
-        return perform_maintenance(state, Action(type="maintenance", details={"maintenance_type": parameters[0], "plot_index": int(parameters[1])}))
+        result = perform_maintenance(state, Action(type="maintenance", details={"maintenance_type": parameters[0], "plot_index": int(parameters[1])}))
     else:
         return f"Unknown action type: {action_type}"
+
+    energy_used = initial_energy - state.energy
+    return f"{result} (Energy: {initial_energy} -> {state.energy}, Used: {energy_used})"
     
 def process_cooperative_upgrade(player1_state: GameState, player2_state: GameState, shared_market: SharedMarket, action: dict) -> str:
     upgrade_type = action['parameters'][0]

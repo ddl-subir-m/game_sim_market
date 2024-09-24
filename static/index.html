@@ -9,24 +9,27 @@
 <body>
     <div id="app">
         <h1>Farming Game Simulator</h1>
-        <button id="startGame">Start Game</button>
-        <button id="stopGame" disabled>Stop Game</button>
         
-        <div id="gameInfo">
-            <h2>Game Info</h2>
-            <p>Day: <span id="currentDay"></span></p>
-            <p>Season: <span id="currentSeason"></span></p>
-            <p>Weather: <span id="currentWeather"></span></p>
+        <div class="game-controls">
+            <button id="startGame">Start Game</button>
+            <button id="stopGame" disabled>Stop Game</button>
         </div>
         
-        <div id="playerFarms">
-            <div id="player1Farm" class="farm">
-                <h2>Player 1 Farm</h2>
-                <div class="plots"></div>
+        <div class="game-info-and-charts">
+            <div id="gameInfo">
+                <h2>Game Info</h2>
+                <!-- <p>Day: <span id="currentDay"></span></p> -->
+                <p>Season: <span id="currentSeason"></span></p>
+                <p>Weather: <span id="currentWeather"></span></p>
             </div>
-            <div id="player2Farm" class="farm">
-                <h2>Player 2 Farm</h2>
-                <div class="plots"></div>
+            
+            <div id="playerCharts">
+                <div class="chart-container">
+                    <canvas id="player1Chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="player2Chart"></canvas>
+                </div>
             </div>
         </div>
         
@@ -43,11 +46,29 @@
             </div>
         </div>
         
+        <div id="playerFarms">
+            <div id="player1Farm" class="farm">
+                <h2>Player 1 Farm</h2>
+                <div class="plots"></div>
+            </div>
+            <div id="player2Farm" class="farm">
+                <h2>Player 2 Farm</h2>
+                <div class="plots"></div>
+            </div>
+        </div>
+        
         <div id="gameLog">
-            <h2>Game Log</h2>
-            <div id="logEntries"></div>
+            <div id="player1Log" class="playerLog">
+                <h3>Player 1 Log</h3>
+                <div id="player1LogEntries"></div>
+            </div>
+            <div id="player2Log" class="playerLog">
+                <h3>Player 2 Log</h3>
+                <div id="player2LogEntries"></div>
+            </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

@@ -6,14 +6,19 @@ body {
 }
 
 #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 20px;
 }
 
 h1 {
-    grid-column: 1 / -1;
     text-align: center;
+}
+
+.game-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
 }
 
 button {
@@ -22,14 +27,38 @@ button {
     cursor: pointer;
 }
 
-#gameInfo, #playerStats, #gameLog {
-    grid-column: 1 / -1;
+.game-info-and-charts {
+    display: flex;
+    gap: 20px;
+}
+
+#gameInfo {
+    flex: 1;
+}
+
+#playerCharts {
+    flex: 2;
+    display: flex;
+    gap: 20px;
+}
+
+.chart-container {
+    flex: 1;
+    height: 200px;
+}
+
+#playerStats {
+    display: flex;
+    justify-content: space-between;
+}
+
+.stats {
+    width: 48%;
 }
 
 #playerFarms {
     display: flex;
     justify-content: space-between;
-    grid-column: 1 / -1;
 }
 
 .farm {
@@ -49,8 +78,49 @@ button {
 }
 
 #gameLog {
-    max-height: 300px;
-    overflow-y: auto;
+    display: flex;
+    justify-content: space-between;
+}
+
+.playerLog {
+    width: 48%;
     border: 1px solid #ccc;
     padding: 10px;
+    margin: 5px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.playerLog h3 {
+    text-align: center;
+    margin-top: 0;
+}
+
+.large-emoticon {
+    font-size: 2em;
+}
+
+.action-message {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.success-message {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 5px;
+    margin: 2px 0;
+    border-radius: 3px;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 5px;
+    margin: 2px 0;
+    border-radius: 3px;
 }

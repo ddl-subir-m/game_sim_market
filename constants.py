@@ -1,6 +1,6 @@
 GAME_RULES = {
     # "total_days": 120,  # 4 seasons of 30 days each
-    "total_days": 7,  
+    "total_days": 50,  
     "starting_money": 1000,
     "max_energy": 100,
     "energy_regen_per_day": 20,
@@ -55,7 +55,7 @@ GAME_RULES = {
     
     # New entry for plot purchase
     "plot_purchase": {
-        "base_cost": 500,  # Base cost to buy a new plot
+        "base_cost": 5,  # Base cost to buy a new plot
         "cost_increase_factor": 1.5  # Each subsequent plot costs 1.5 times more
     }
 }
