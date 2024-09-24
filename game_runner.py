@@ -30,6 +30,7 @@ def game_state_to_dict(state):
         "money": state.money,
         "harvested_crops": state.harvested_crops,
         "energy": state.energy,
+        "invalid_action_count": state.invalid_action_count,
     }
 
 async def run_game(player1_config: dict, player2_config: dict, stop_event: asyncio.Event):

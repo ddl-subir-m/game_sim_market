@@ -1,4 +1,5 @@
 GAME_RULES = {
+    "invalid_action_penalty": 5,  # Deduct 5 money for each invalid action
     # "total_days": 120,  # 4 seasons of 30 days each
     "total_days": 50,  
     "starting_money": 1000,

@@ -31,11 +31,12 @@ class GameState(BaseModel):
     harvested_crops: Dict[str, int] = {}
     upgrades: List[str] = []
     market_trends: Dict[str, float] = {}
+    invalid_action_count: int = 0  
 
     def get_plot_status(self, game_rules: dict) -> List[str]:
         status = []
         for i, plot in enumerate(self.plots, start=1):
-            if plot.is_vacant():
+            if plot.crop is None:
                 status.append(f"Plot {i}: Vacant")
             else:
                 crop = plot.crop

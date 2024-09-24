@@ -13,6 +13,11 @@ def update_market_trends(state: GameState):
     if state.day % GAME_RULES["market"]["trend_duration"] == 1:
         state.market_trends = {crop: random.uniform(0.8, 1.2) for crop in GAME_RULES["crops"]}
 
+def apply_invalid_action_penalty(state: GameState, reason: str) -> str:
+    state.invalid_action_count += 1
+    state.money = max(0, state.money - GAME_RULES["invalid_action_penalty"])
+    return f"Invalid action: {reason}. Penalty applied. Current invalid actions: {state.invalid_action_count}"
+
 def plant_crop(state: GameState, action: Action) -> str:
     crop_type = action.details["crop_type"]
     plot_index = action.details["plot_index"] - 1  # Convert to 0-based index
@@ -20,16 +25,16 @@ def plant_crop(state: GameState, action: Action) -> str:
     print(f"Attempting to plant {crop_type} on plot {plot_index + 1}. Total plots: {len(state.plots)}")
     
     if plot_index < 0 or plot_index >= len(state.plots):
-        return f"Invalid plot number. You have {len(state.plots)} plot(s)."
+        return apply_invalid_action_penalty(state, f"Invalid plot number. You have {len(state.plots)} plot(s).")
     
     if state.plots[plot_index].crop is not None:
-        return f"Plot {plot_index + 1} is not vacant"
+        return apply_invalid_action_penalty(state, f"Plot {plot_index + 1} is not vacant")
     
     crop_cost = GAME_RULES["crops"][crop_type]["cost"]
     energy_cost = GAME_RULES["energy_cost"]["plant"][crop_type]
     
     if state.money < crop_cost or state.energy < energy_cost:
-        return "Insufficient resources for planting"
+        return apply_invalid_action_penalty(state, "Insufficient resources for planting")
     
     state.money -= crop_cost
     state.energy -= energy_cost
@@ -42,17 +47,17 @@ def harvest_crop(state: GameState, action: Action) -> str:
     plot_index = action.details["plot_index"] - 1  # Convert to 0-based index
     
     if plot_index < 0 or plot_index >= len(state.plots) or state.plots[plot_index].crop is None:
-        return f"No crop to harvest in plot {plot_index + 1}"
+        return apply_invalid_action_penalty(state, f"No crop to harvest in plot {plot_index + 1}")
     
     crop = state.plots[plot_index].crop
     crop_info = GAME_RULES["crops"][crop.type]
     energy_cost = GAME_RULES["energy_cost"]["harvest"][crop.type]
     
     if state.energy < energy_cost:
-        return "Insufficient energy for harvesting"
+        return apply_invalid_action_penalty(state, "Insufficient energy for harvesting")
     
     if crop.growth_progress < 1.0:
-        return "Crop not ready for harvest"
+        return apply_invalid_action_penalty(state, "Crop not ready for harvest")
     
     state.energy -= energy_cost
     
@@ -71,12 +76,12 @@ def perform_maintenance(state: GameState, action: Action) -> str:
     plot_index = action.details["plot_index"] - 1  # Convert to 0-based index
     
     if plot_index < 0 or plot_index >= len(state.plots):
-        return f"Invalid plot number. You have {len(state.plots)} plot(s)."
+        return apply_invalid_action_penalty(state, f"Invalid plot number. You have {len(state.plots)} plot(s).")
     
     energy_cost = GAME_RULES["energy_cost"]["maintenance"][maintenance_type]
     
     if state.energy < energy_cost:
-        return "Insufficient energy for maintenance"
+        return apply_invalid_action_penalty(state, "Insufficient energy for maintenance")
     
     state.energy -= energy_cost
     state.plots[plot_index].soil_quality = min(1.0, state.plots[plot_index].soil_quality + GAME_RULES["soil_quality"]["maintenance_improvement"])
@@ -124,12 +129,12 @@ def sell_crops(state: GameState, shared_market: SharedMarket, action: Action) ->
     market_type = action.details["market_type"]
     
     if crop_type not in state.harvested_crops or state.harvested_crops[crop_type] < amount:
-        return "Insufficient crops for sale"
+        return apply_invalid_action_penalty(state, "Insufficient crops for sale")
     
     energy_cost = GAME_RULES["energy_cost"]["trade"][market_type]
     
     if state.energy < energy_cost:
-        return "Insufficient energy for trading"
+        return apply_invalid_action_penalty(state, "Insufficient energy for trading")
     
     state.energy -= energy_cost
     
@@ -154,7 +159,7 @@ def buy_item(state: GameState, action: Action) -> str:
         cost = GAME_RULES["plot_purchase"]["base_cost"] * (GAME_RULES["plot_purchase"]["cost_increase_factor"] ** current_plots)
         
         if state.money < cost:
-            return f"Insufficient funds to buy a new plot. Cost: {cost}, Available: {state.money}"
+            return apply_invalid_action_penalty(state, f"Insufficient funds to buy a new plot. Cost: {cost}, Available: {state.money}")
         
         state.money -= cost
         state.plots.append(Plot())
@@ -164,10 +169,10 @@ def buy_item(state: GameState, action: Action) -> str:
         upgrade_cost = GAME_RULES["upgrades"][item_type]["cost"]
         
         if item_type in state.upgrades:
-            return "Upgrade already purchased"
+            return apply_invalid_action_penalty(state, "Upgrade already purchased")
         
         if state.money < upgrade_cost:
-            return "Insufficient money for upgrade"
+            return apply_invalid_action_penalty(state, "Insufficient money for upgrade")
         
         state.money -= upgrade_cost
         state.upgrades.append(item_type)
@@ -175,7 +180,7 @@ def buy_item(state: GameState, action: Action) -> str:
         return f"Purchased {item_type} upgrade"
     
     else:
-        return f"Unknown item to buy: {item_type}"
+        return apply_invalid_action_penalty(state, f"Unknown item to buy: {item_type}")
 
 def process_day(player1_state: GameState, player2_state: GameState, shared_market: SharedMarket):
     player1_state.day += 1
