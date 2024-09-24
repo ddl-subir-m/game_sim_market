@@ -32,7 +32,7 @@ def game_state_to_dict(state):
         "energy": state.energy,
     }
 
-async def run_game(player1_config: dict, player2_config: dict):
+async def run_game(player1_config: dict, player2_config: dict, stop_event: asyncio.Event):
     shared_market = SharedMarket()
     
     # Create AutoGen agents for players
@@ -65,6 +65,7 @@ async def run_game(player1_config: dict, player2_config: dict):
 
     Important rules to remember:
     - You can only harvest crops that have 100% grown. The growth time for each crop is specified in the rules above.
+    - Consider the best course of action, thinking through your decision step by step.
     - You can only plant on plots that do not have a crop. If a plot already has a crop, you need to harvest it first before planting a new one.
     - Each plot is numbered, starting from 1. Make sure you're using the correct plot number in your actions.
     - Before harvesting or planting, check the state of your plots to ensure the action is valid.
@@ -108,6 +109,10 @@ async def run_game(player1_config: dict, player2_config: dict):
     player2_action = ""
 
     for day in range(1, GAME_RULES["total_days"] + 1):
+        # Check if the game should be stopped
+        if stop_event.is_set():
+            print("Game stopped")
+            return
         # Process end of previous day and start of new day
         if day > 1:
             process_day(player1_state, player2_state, shared_market)
@@ -156,6 +161,11 @@ async def run_game(player1_config: dict, player2_config: dict):
             else:
                 result = process_action(state, shared_market, action)
             day_log.append(f"Day {day}, {player}: {action['name']}({', '.join(map(str, action.get('parameters', [])))}): {result}")
+
+            # Check if the game should stop after each player's action
+            if stop_event.is_set():
+                print("Game stopped during player actions")
+                return
         
         game_log.extend(day_log)
         
@@ -172,6 +182,11 @@ async def run_game(player1_config: dict, player2_config: dict):
             "player2_state": game_state_to_dict(player2_state)
         }
 
+        # Check if the game should stop after yielding the state
+        if stop_event.is_set():
+            print("Game stopped after yielding state")
+            return
+        
         await asyncio.sleep(0.2)  # Small delay to prevent blocking
 
     # Game over, determine winner

@@ -35,6 +35,8 @@ game_state = {
 
 # Game control
 game_task = None
+stop_event = asyncio.Event()  # Initialize stop_event here
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -43,40 +45,50 @@ async def read_root():
 
 @app.post("/start_game")
 async def start_game():
-    global game_state, game_task
-    player1_config = {
-        "system_message": "You are an AI player in a farming game. Make decisions to maximize your score.",
-    }
-    player2_config = {
-        "system_message": "You are an AI player in a farming game. Make decisions to maximize your score.",
-    }
+    global game_state, game_task, stop_event
+    if game_task:
+        raise HTTPException(status_code=400, detail="Game already in progress")
+    
+    stop_event.clear()
+    player1_config = {"system_message": "You are an AI player in a farming game. Make decisions to maximize your score."}
+    player2_config = {"system_message": "You are an AI player in a farming game. Make decisions to maximize your score."}
     
     async def game_stream():
-        async for state in run_game(player1_config, player2_config):
-            if "game_over" in state:
-                game_state["game_over"] = True
-                game_state["current_day"] = state.get("day", game_state["current_day"])
-                yield json.dumps(state)
-            else:
+        try:
+            async for state in run_game(player1_config, player2_config, stop_event):
+                if stop_event.is_set():
+                    print("Game stopped")
+                    break
                 game_state.update(state)
-                if "day" in state:
-                    yield json.dumps({
-                        # "day": game_state["current_day"],
-                        "day": state.get("day", game_state["current_day"]),
-                        "message": f"Processed day {game_state['current_day']}",
-                        "player1_action": state.get("player1_action"),
-                        "player2_action": state.get("player2_action")
-                    })
+                yield json.dumps({
+                    "day": state.get("day", game_state["current_day"]),
+                    "message": f"Processed day {state.get('day', game_state['current_day'])}",
+                    "player1_action": state.get("player1_action"),
+                    "player2_action": state.get("player2_action"),
+                    "game_over": state.get("game_over", False)
+                })
+                if state.get("game_over", False):
+                    break
+        finally:
+            print("Game stream finished")
 
+    async def run_game_task():
+        async for _ in game_stream():
+            pass
 
+    game_task = asyncio.create_task(run_game_task())
     return StreamingResponse(game_stream(), media_type="application/json")
 
 @app.post("/stop_game")
 async def stop_game():
-    global game_task
+    global game_task, stop_event
+    stop_event.set()
     if game_task:
-        game_task.cancel()
-        await game_task
+        try:
+            await asyncio.wait_for(game_task, timeout=5.0)
+        except asyncio.TimeoutError:
+            print("Game task didn't finish in time, forcefully cancelling")
+            game_task.cancel()
         game_task = None
     return {"message": "Game stopped"}
 

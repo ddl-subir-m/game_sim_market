@@ -183,11 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch('/start_game', { method: 'POST' });
-            const reader = response.body.getReader();
+            gameStream = response.body.getReader();
             const decoder = new TextDecoder();
-
+    
             while (gameInProgress) {
-                const { done, value } = await reader.read();
+                const { done, value } = await gameStream.read();
                 if (done) break;
                 
                 const jsonString = decoder.decode(value);
@@ -196,10 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.game_over) {
                     console.log('Game Over!', data);
                     gameInProgress = false;
-                    startGameBtn.disabled = false;
-                    stopGameBtn.disabled = true;
-                    updateGameState(data);
-                    updateCharts(data.day, data.player1_action, data.player2_action);
+                    break;
                 } else {
                     console.log(`Day ${data.day} processed`);
                     await updateGameState();
@@ -208,22 +205,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error during game:', error);
+        } finally {
             gameInProgress = false;
             startGameBtn.disabled = false;
             stopGameBtn.disabled = true;
+            if (gameStream) {
+                await gameStream.cancel();
+                gameStream = null;
+            }
         }
     }
 
     async function stopGame() {
         if (!gameInProgress) return;
-                gameInProgress = false;
-                startGameBtn.disabled = false;
-                stopGameBtn.disabled = true;
-                
-        // Send a request to the server to stop the game
-        await fetch('/stop_game', { method: 'POST' });
+        gameInProgress = false;
+        startGameBtn.disabled = false;
+        stopGameBtn.disabled = true;
+        
+        try {
+            const response = await fetch('/stop_game', { method: 'POST' });
+            if (!response.ok) {
+                throw new Error('Failed to stop the game');
+            }
+            console.log('Game stopped successfully');
+            if (gameStream) {
+                await gameStream.cancel();
+                gameStream = null;
+            }
+        } catch (error) {
+            console.error('Error stopping the game:', error);
+        }
     }
-
     async function updateGameState() {
         const response = await fetch('/game_state');
         const gameState = await response.json();
